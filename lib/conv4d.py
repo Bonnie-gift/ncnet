@@ -44,29 +44,31 @@ def conv4d(data, filters, bias=None, permute_filters=True, use_half=False):
 
     for i in range(output.size(0)):  # loop on first feature dimension
         # convolve with center channel of filter (at position=padding)
-        output[i, :, :, :, :, :] = F.conv3d(
-            data_padded[i + padding, :, :, :, :, :],
-            filters[padding, :, :, :, :, :],
-            bias=bias,
-            stride=1,
-            padding=padding,
-        )
+        with torch.no_grad():
+            output[i, :, :, :, :, :] = F.conv3d(
+                data_padded[i + padding, :, :, :, :, :],
+                filters[padding, :, :, :, :, :],
+                bias=bias,
+                stride=1,
+                padding=padding,
+            )
         # convolve with upper/lower channels of filter (at postions [:padding] [padding+1:])
         for p in range(1, padding + 1):
-            output[i, :, :, :, :, :] = output[i, :, :, :, :, :] + F.conv3d(
-                data_padded[i + padding - p, :, :, :, :, :],
-                filters[padding - p, :, :, :, :, :],
-                bias=None,
-                stride=1,
-                padding=padding,
-            )
-            output[i, :, :, :, :, :] = output[i, :, :, :, :, :] + F.conv3d(
-                data_padded[i + padding + p, :, :, :, :, :],
-                filters[padding + p, :, :, :, :, :],
-                bias=None,
-                stride=1,
-                padding=padding,
-            )
+            with torch.no_grad():
+                output[i, :, :, :, :, :] = output[i, :, :, :, :, :] + F.conv3d(
+                    data_padded[i + padding - p, :, :, :, :, :],
+                    filters[padding - p, :, :, :, :, :],
+                    bias=None,
+                    stride=1,
+                    padding=padding,
+                )
+                output[i, :, :, :, :, :] = output[i, :, :, :, :, :] + F.conv3d(
+                    data_padded[i + padding + p, :, :, :, :, :],
+                    filters[padding + p, :, :, :, :, :],
+                    bias=None,
+                    stride=1,
+                    padding=padding,
+                )
 
     output = output.permute(1, 2, 0, 3, 4, 5).contiguous()
     return output
